@@ -1,0 +1,6 @@
+stage1_checkpoints/
+stage2_checkpoints/
+test/
+train/
+person11_virus_38.jpeg
+pneumonia_model.mat
