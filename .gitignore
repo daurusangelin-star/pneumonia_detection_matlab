@@ -4,4 +4,4 @@ test/
 train/
 person11_virus_38.jpeg
 pneumonia_model.mat
-resnet_finetuned_model.mat
+resnet50_finetuned_model.mat
