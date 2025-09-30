@@ -1,3 +1,10 @@
+% =========================================================================
+%                             train_model.m
+% =========================================================================
+% Use this script ONLY for training. It will automatically stop Stage 1
+% when accuracy stops improving and then proceed to Stage 2.
+% =========================================================================
+
 clear;
 close all;
 clc;
@@ -17,14 +24,11 @@ model_filename = 'resnet50_finetuned_model.mat';
 
 % --- STAGE 1: TRANSFER LEARNING WITH RESNET-50 ---
 disp('--- Starting Stage 1: Transfer Learning ---');
-
-% --- CORRECTED LOGIC TO FIND LATEST CHECKPOINT ---
 checkpointPath_S1 = 'stage1_checkpoints';
 if ~exist(checkpointPath_S1, 'dir'), mkdir(checkpointPath_S1); end
 
 latestCheckpoint = dir(fullfile(checkpointPath_S1, '*.mat'));
 if ~isempty(latestCheckpoint)
-    % Find the newest file by date
     [~, idx] = max([latestCheckpoint.datenum]);
     latestFile = fullfile(checkpointPath_S1, latestCheckpoint(idx).name);
     
@@ -46,14 +50,24 @@ inputSize = lgraph.Layers(1).InputSize(1:2);
 augimdsTrain = augmentedImageDatastore(inputSize, imdsTrain, 'ColorPreprocessing', 'gray2rgb');
 augimdsValidation = augmentedImageDatastore(inputSize, imdsValidation, 'ColorPreprocessing', 'gray2rgb');
 
-options_stage1 = trainingOptions('sgdm', 'MiniBatchSize',16, 'MaxEpochs',20, 'InitialLearnRate',1e-4, 'Shuffle','every-epoch', 'ValidationData',augimdsValidation, 'ValidationFrequency',10, 'Verbose',false, 'Plots','training-progress', 'CheckpointPath', checkpointPath_S1);
+% --- MODIFIED TRAINING OPTIONS ---
+options_stage1 = trainingOptions('sgdm', ...
+    'MiniBatchSize',16, ...
+    'MaxEpochs',20, ...
+    'InitialLearnRate',1e-4, ...
+    'Shuffle','every-epoch', ...
+    'ValidationData',augimdsValidation, ...
+    'ValidationFrequency',10, ...
+    'ValidationPatience', 3, ... % <-- STOPS TRAINING EARLY IF ACCURACY PLATEAUS
+    'Verbose',false, ...
+    'Plots','training-progress', ...
+    'CheckpointPath', checkpointPath_S1);
+    
 [trainedNet_Stage1, ~] = trainNetwork(augimdsTrain, lgraph, options_stage1);
 disp('--- Stage 1 training complete. ---');
 
 % --- STAGE 2: FINE-TUNING THE TRAINED RESNET-50 ---
 disp('--- Starting Stage 2: Fine-Tuning ---');
-
-% The logic for Stage 2 needs its own checkpoint resume capability
 lgraph_finetune = layerGraph(trainedNet_Stage1);
 checkpointPath_S2 = 'stage2_checkpoints';
 if ~exist(checkpointPath_S2, 'dir'), mkdir(checkpointPath_S2); end
@@ -81,7 +95,18 @@ else
     disp("Deeper layers have been unfrozen for initial fine-tuning.");
 end
 
-options_finetune = trainingOptions('sgdm', 'MiniBatchSize',16, 'MaxEpochs',10, 'InitialLearnRate',1e-5, 'Shuffle','every-epoch', 'ValidationData',augimdsValidation, 'ValidationFrequency',10, 'Verbose',false, 'Plots','training-progress', 'CheckpointPath', checkpointPath_S2);
+options_finetune = trainingOptions('sgdm', ...
+    'MiniBatchSize',16, ...
+    'MaxEpochs',10, ...
+    'InitialLearnRate',1e-5, ...
+    'Shuffle','every-epoch', ...
+    'ValidationData',augimdsValidation, ...
+    'ValidationFrequency',10, ...
+    'ValidationPatience', 3, ... % <-- STOPS TRAINING EARLY IF ACCURACY PLATEAUS
+    'Verbose',false, ...
+    'Plots','training-progress', ...
+    'CheckpointPath', checkpointPath_S2);
+    
 [trainedNet_Finetuned, ~] = trainNetwork(augimdsTrain, lgraph_finetune, options_finetune);
 disp('--- Fine-tuning complete! ---');
 

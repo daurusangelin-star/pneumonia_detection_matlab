@@ -4,8 +4,9 @@ clc;
 
 %% Step 1: Load the Final Model and Data
 disp('Step 1: Loading final model and validation data...');
-load('resnet50_finetuned_model.mat');
-finalNet = trainedNet_Finetuned;
+% --- CORRECTED LOADING METHOD ---
+data = load('resnet50_finetuned_model.mat');
+finalNet = data.trainedNet_Finetuned; % Use the correct variable name 'net'
 
 base_folder = 'C:\Users\dauru\OneDrive\Documents\MATLAB\proj\chest_xray'; 
 validation_folder = fullfile(base_folder, 'test');
@@ -26,7 +27,7 @@ title('Confusion Matrix for Test Data');
 
 %% Step 3: Test on a Single New Image
 disp('Step 3: Performing test on a single new image...');
-newImage = imread('C:\Users\dauru\OneDrive\Documents\MATLAB\proj\chest_xray\person5_bacteria_19.jpeg');
+newImage = imread('C:\Users\dauru\OneDrive\Documents\MATLAB\proj\chest_xray\person11_virus_38.jpeg');
 inputSize = finalNet.Layers(1).InputSize;
 if size(newImage, 3) == 3
     imgGray = rgb2gray(newImage);
